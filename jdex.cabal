@@ -1,0 +1,22 @@
+name:                jdex
+version:             0.1.0
+synopsis:            Tool for extracting information from Javadoc-generated HTML documentation.
+-- description:         
+homepage:            https://github.com/jhrcek/jdex
+license:             BSD3
+license-file:        LICENSE
+author:              Jan Hrcek
+maintainer:          jhrcek@redhat.com
+-- copyright:           
+category:            Web
+build-type:          Simple
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+library
+  -- exposed-modules:     
+  -- other-modules:       
+  -- other-extensions:    
+  build-depends:       base >=4.6 && <4.7
+  hs-source-dirs:      src
+  default-language:    Haskell2010
