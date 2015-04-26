@@ -1,4 +1,4 @@
-module Types (
+module Jdex.Types (
     Construct (..)
   , isClass, isAnnotation, isInterface, isEnum
   , Link(..)

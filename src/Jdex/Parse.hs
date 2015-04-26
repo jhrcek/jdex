@@ -1,4 +1,4 @@
-module Parse (
+module Jdex.Parse (
     -- Extracting info from javadoc files
       directKnownSubclasses
     , getIndexLinks
@@ -17,7 +17,7 @@ import Text.XML.HXT.Core (readDocument, withParseHTML, withWarnings, runX, Arrow
 import Text.XML.HXT.XPath.Arrows (getXPathTrees)
 import Text.XML.HXT.Arrow.XmlState.TypeDefs (IOSArrow)
 
-import Types
+import Jdex.Types
 
 directKnownSubclasses :: FilePath -> IO [Link]
 directKnownSubclasses javadocFile = extractInfo javadocFile subclassesArrow
