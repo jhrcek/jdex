@@ -6,22 +6,30 @@ module Jdex.Parse (
     , fqcnToJdFile
     , jdFileToFQCN
     , jdFileToSCN
+    , inheritancePath
     ) where
 
 import Control.Arrow ((&&&), (>>>))
-import Data.Char (isAlpha, isUpper, toUpper)
+import Control.Arrow.ArrowList ((>>.))
+import Control.Arrow.ArrowTree ((//>))
+import Data.Char (isAlpha, isUpper, toUpper, isSpace)
 import Data.List (isPrefixOf, intercalate)
 import System.FilePath ((</>), dropExtension, takeBaseName)
 import Text.HandsomeSoup (css)
-import Text.XML.HXT.Core (readDocument, withParseHTML, withWarnings, runX, ArrowXml, XmlTree, getAttrValue, (>>.), IOStateArrow)
+import Text.XML.HXT.Core (readDocument, withParseHTML, withWarnings, runX, ArrowXml, XmlTree, getAttrValue, IOStateArrow, getText)
 import Text.XML.HXT.XPath.Arrows (getXPathTrees)
 import Text.XML.HXT.Arrow.XmlState.TypeDefs (IOSArrow)
 
 import Jdex.Types
 
+-- TODO - only valid for classes
 directKnownSubclasses :: FilePath -> IO [Link]
 directKnownSubclasses javadocFile = extractInfo javadocFile subclassesArrow
     where subclassesArrow = getXPathTrees "//h2/following-sibling::dl/dt/b[contains(text(),'Direct Known Subclasses')]/../../dd" >>> getLinks
+
+inheritancePath :: FilePath -> IO [String] --TODO : Use FQN instead of String
+inheritancePath javadocFile = extractInfo javadocFile parentClassesUpToObjectArrow
+    where parentClassesUpToObjectArrow = getXPathTrees "//h2/following-sibling::pre[1]" //> getText >>. filter (not.null) . map (filter (not . isSpace))
 
 getIndexLinks :: FilePath -> IO [Link]
 getIndexLinks javadocRootDir = extractInfo (getIndexFile javadocRootDir) getLinks
