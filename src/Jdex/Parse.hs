@@ -28,8 +28,16 @@ directKnownSubclasses javadocFile = extractInfo javadocFile subclassesArrow
     where subclassesArrow = getXPathTrees "//h2/following-sibling::dl/dt/b[contains(text(),'Direct Known Subclasses')]/../../dd" >>> getLinks
 
 inheritancePath :: FilePath -> IO [String] --TODO : Use FQN instead of String
-inheritancePath javadocFile = extractInfo javadocFile parentClassesUpToObjectArrow
+inheritancePath javadocFile = {-discardGenericParams `fmap`-} extractInfo javadocFile parentClassesUpToObjectArrow
     where parentClassesUpToObjectArrow = getXPathTrees "//h2/following-sibling::pre[1]" //> getText >>. filter (not.null) . map (filter (not . isSpace))
+          -- the arrow above returns the following - we want to get rid of all stuff inside <>
+          -- ["java.lang.Object"
+          -- ,"com.google.web.bindery.event.shared.Event","<H>"
+          -- ,"com.google.gwt.event.shared.GwtEvent","<","BeforeSelectionHandler","<T>>"
+          -- ,"com.google.gwt.event.logical.shared.BeforeSelectionEvent<T>"]
+          discardGenericParams :: [String] -> [String]
+          discardGenericParams = undefined --TODO
+
 
 getIndexLinks :: FilePath -> IO [Link]
 getIndexLinks javadocRootDir = extractInfo (getIndexFile javadocRootDir) getLinks

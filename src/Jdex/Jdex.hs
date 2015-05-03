@@ -4,8 +4,8 @@
 module Jdex.Jdex where
 
 import Control.Arrow ((&&&))
-import Data.List (sort, group)
-import Data.Tree (Tree(..), unfoldTreeM_BF, rootLabel)
+import Data.List (sort, group, foldl')
+import Data.Tree (Tree(..), Forest, unfoldTreeM_BF, rootLabel)
 import System.Environment (getArgs)
 import System.FilePath ((</>))
 
@@ -26,6 +26,7 @@ printSubclassHierarchyAsDot rootJdDir fqcn = do
     putStrLn . unlines $ treeToGraphvizEdges subclassTree
     putStrLn "}"
 
+-- | Given javadoc root dir and fqn of a class return inheritance tree rooted at that class
 extractSubclassTree :: FilePath -> String -> IO (Tree String)
 extractSubclassTree jdroot fqcn = unfoldTreeM_BF (myUnfolder jdroot) fqcn
   where
@@ -40,7 +41,29 @@ linksSummary :: [Link] -> [(Construct, Int)]
 linksSummary = map (head &&& length) . group . sort . map lConstruct
 
 
+classInheritanceHierarchy jdRoot = do
+    indexLinks <- getIndexLinks jdRoot
+    let allClassJdFiles = map ((jdRoot </>) . lFile) . filter isClass $ indexLinks
+    allClassInheritancePaths <- mapM (\jdfile -> do print jdfile ; inheritancePath jdfile) allClassJdFiles
+    return allClassInheritancePaths --TODO after removing generic param info from inheritancePath, build tree using pathListToTree
+
+-- | Tree manipulation
 -- Tree to list like: ["a -> b", "a -> c", "b -> c", ...]
 treeToGraphvizEdges :: Show a => Tree a -> [String]
-treeToGraphvizEdges (Node node subtrees) = map ((\child -> show node ++ " -> " ++ show child) . rootLabel) subtrees ++ concatMap treeToGraphvizEdges subtrees
+treeToGraphvizEdges (Node root subtrees) = map (parentChildEdge root . rootLabel) subtrees ++ concatMap treeToGraphvizEdges subtrees
+   where parentChildEdge parent child = show parent ++ " -> " ++ show child
+
+-- Transform list of paths (like [[a,b,c],[a,b,d],..]) into tree like
+-- a - b - c
+--      \- d
+-- The idea is to use this to build class inheritance tree from inheritance paths obtained from class's javadoc files
+pathListToTree :: Eq a => [[a]] -> Forest a
+pathListToTree = foldl' addPath []
+  where
+    addPath :: Eq b => Forest b -> [b] -> Forest b
+    addPath forest [] = forest
+    addPath [] (x:xs) = [Node x (addPath [] xs)]
+    addPath (t@(Node root subforest):ts) (x:xs)
+       | root == x  = Node root (addPath subforest xs) : ts
+       | otherwise  = t : addPath ts (x:xs)
 
