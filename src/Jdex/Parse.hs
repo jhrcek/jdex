@@ -12,7 +12,7 @@ module Jdex.Parse (
 import Control.Arrow ((&&&), (>>>))
 import Control.Arrow.ArrowList ((>>.))
 import Control.Arrow.ArrowTree ((//>))
-import Data.Char (isAlpha, isUpper, toUpper, isSpace)
+import Data.Char (isAlpha, isUpper, toUpper)
 import Data.List (isPrefixOf, intercalate)
 import System.FilePath ((</>), dropExtension, takeBaseName)
 import Text.HandsomeSoup (css)
@@ -28,16 +28,25 @@ directKnownSubclasses javadocFile = extractInfo javadocFile subclassesArrow
     where subclassesArrow = getXPathTrees "//h2/following-sibling::dl/dt/b[contains(text(),'Direct Known Subclasses')]/../../dd" >>> getLinks
 
 inheritancePath :: FilePath -> IO [String] --TODO : Use FQN instead of String
-inheritancePath javadocFile = {-discardGenericParams `fmap`-} extractInfo javadocFile parentClassesUpToObjectArrow
-    where parentClassesUpToObjectArrow = getXPathTrees "//h2/following-sibling::pre[1]" //> getText >>. filter (not.null) . map (filter (not . isSpace))
-          -- the arrow above returns the following - we want to get rid of all stuff inside <>
-          -- ["java.lang.Object"
-          -- ,"com.google.web.bindery.event.shared.Event","<H>"
-          -- ,"com.google.gwt.event.shared.GwtEvent","<","BeforeSelectionHandler","<T>>"
-          -- ,"com.google.gwt.event.logical.shared.BeforeSelectionEvent<T>"]
-          discardGenericParams :: [String] -> [String]
-          discardGenericParams = undefined --TODO
+inheritancePath javadocFile = do
+    messyInheritanceLines <- extractInfo javadocFile parentClassesUpToObjectArrow
+    return . map discardGenericParams . textsToClassFQNs $ messyInheritanceLines 
+  where 
+      parentClassesUpToObjectArrow = getXPathTrees "//h2/following-sibling::pre[1]" //> getText  -- >>. ({-filter (not.null) . map discardGenericParams .-} textsToClassFQNs)
+      -- Helper to normalize messy stuff from getText
+      -- in goes: ["\njava.lang.Object\n  "
+      --          ,"com.google.web.bindery.event.shared.Event","<H>\n      "
+      --          ,"com.google.gwt.event.shared.GwtEvent","<","BeforeSelectionHandler","<T>>\n          "
+      --          ,"com.google.gwt.event.logical.shared.BeforeSelectionEvent<T>","\n"]
+      -- out comes: ["java.lang.Object"
+      --            ,"com.google.web.bindery.event.shared.Event<H>"
+      --            ,"com.google.gwt.event.shared.GwtEvent<BeforeSelectionHandler<T>>"
+      --            ,"com.google.gwt.event.logical.shared.BeforeSelectionEvent<T>"]
+      textsToClassFQNs :: [String] -> [String]
+      textsToClassFQNs = tail {-1st line always empty -} . lines . filter (/=' ') . concat
 
+      discardGenericParams :: String -> String --TODO FQN instead of String?
+      discardGenericParams = takeWhile (/='<')
 
 getIndexLinks :: FilePath -> IO [Link]
 getIndexLinks javadocRootDir = extractInfo (getIndexFile javadocRootDir) getLinks
